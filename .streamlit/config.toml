@@ -7,3 +7,8 @@ gatherUsageStats = false
 
 [server]
 headless = true
+
+[client]
+# 개발자 툴바/단축키(예: C 키 → "Clear caches" 팝업, R → Rerun) 숨김 — 일반 사용자용
+toolbarMode = "minimal"
+showErrorDetails = true
