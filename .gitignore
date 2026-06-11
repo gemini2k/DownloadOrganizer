@@ -39,3 +39,6 @@ results/
 *.docx
 *.pptx
 !demo_downloads/**
+# 소개 페이지에서 배포할 발표자료는 예외적으로 허용
+!docs/*.pptx
+!docs/*.pdf
