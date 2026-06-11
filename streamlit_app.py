@@ -67,6 +67,49 @@ def path_badge(path_str: str, must_be_dir: bool = True) -> str:
         return "❓ 확인 불가"
 
 
+def folder_summary(root: Path) -> pd.DataFrame:
+    """최상위 분류 폴더별 파일 수·용량(재귀) 요약."""
+    rows = []
+    try:
+        children = sorted([p for p in root.iterdir() if p.is_dir()], key=lambda p: p.name)
+    except OSError:
+        return pd.DataFrame()
+    for child in children:
+        files = [f for f in child.rglob("*") if f.is_file()]
+        size = sum(f.stat().st_size for f in files)
+        rows.append({"폴더": child.name, "파일 수": len(files), "용량": human_size(size)})
+    return pd.DataFrame(rows)
+
+
+def folder_tree(root: Path, max_entries: int = 300) -> str:
+    """생성된 폴더 구조를 들여쓰기 트리 텍스트로(항목이 많으면 잘라냄)."""
+    lines: list[str] = []
+    count = 0
+
+    def walk(d: Path, depth: int) -> bool:
+        nonlocal count
+        try:
+            entries = sorted(d.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+        except OSError:
+            return False
+        for p in entries:
+            if count >= max_entries:
+                lines.append("  " * depth + "… (이하 생략)")
+                return True
+            count += 1
+            if p.is_dir():
+                n = sum(1 for _ in p.rglob("*") if _.is_file())
+                lines.append("  " * depth + f"📁 {p.name}/  ({n})")
+                if walk(p, depth + 1):
+                    return True
+            else:
+                lines.append("  " * depth + f"📄 {p.name}")
+        return False
+
+    walk(root, 0)
+    return "\n".join(lines)
+
+
 # 화면 표시용 한글 라벨 (폴더명/내부 키는 영문 유지 — 이동 동작·토큰 안전).
 CATEGORY_KO: dict[str, str] = {
     "documents": "문서",
@@ -465,6 +508,7 @@ if analyze:
         st.session_state.pop("excluded_srcs", None)
         st.session_state.pop("apply_done", None)
         st.session_state.pop("last_action", None)
+        st.session_state.pop("last_result_dir", None)
         st.session_state.pop("plan_default", None)
         st.session_state.pop("plan_rev", None)
     except Exception as exc:  # noqa: BLE001
@@ -476,6 +520,17 @@ if preview is None:
     last = st.session_state.get("last_action")
     if last:
         st.success(last)
+        result_dir = st.session_state.get("last_result_dir")
+        if result_dir and Path(result_dir).exists():
+            rd = Path(result_dir)
+            st.subheader("📁 결과 폴더 구조")
+            st.caption(f"탐색기에서 열어 확인하세요: `{rd}`")
+            summ = folder_summary(rd)
+            if not summ.empty:
+                st.dataframe(summ, use_container_width=True, hide_index=True)
+            tree = folder_tree(rd)
+            with st.expander("폴더 트리 보기", expanded=True):
+                st.code(tree or "(빈 폴더)", language=None)
         st.caption("폴더 내용이 바뀌었습니다. 최신 상태를 보려면 다시 분석하세요.")
     st.info("왼쪽 사이드바에서 경로를 확인하고 **분석 (미리보기)** 버튼을 눌러 시작하세요.")
     st.stop()
@@ -713,6 +768,7 @@ with tab_run:
                 msg += f" · 빈 폴더 {result.empty_dirs_removed}개 휴지통 정리"
             msg += f"\n\n이력 파일: {result.history_file}"
             st.session_state["last_action"] = msg
+            st.session_state["last_result_dir"] = str(Path(params["output_root"]) / "organized_files")
             st.session_state.pop("preview", None)  # plan is now stale
             st.rerun()
         except ConfirmationError as exc:
