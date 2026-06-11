@@ -19,6 +19,22 @@ DownloadOrganizer는 사용자의 다운로드 폴더를 분석하여 파일을 
 
 ---
 
+## 구현 현황 (현재 버전, 본 문서 갱신 기준)
+
+아래 본문 중 일부(설계 초안·역할 프롬프트 등)는 기획 단계 기록이며, **현재 구현은 다음과 같다.**
+
+- **3단계 안전 실행**: `analyze`(미리보기·계획 토큰 발급) → `apply`(토큰 일치 시에만 이동) → `undo`(되돌리기, `--preview` 지원). 토큰은 계획에 바인딩되어 오래된 계획 적용을 차단.
+- **분류 폴더는 한글**(문서/이미지/동영상/오디오/압축파일/실행파일/코드/기타), 확장자 기준. `--ext-grouping`·`--date-grouping`으로 하위 분류, `--route-old/--route-duplicates`로 분리 폴더.
+- **삭제는 영구 삭제 없이 휴지통(send2trash)만**: `clean`(중복 1개 보존/오래된/선택), `--remove-empty-dirs`(이동 후 빈 폴더). 모두 복구 가능.
+- **중복 탐지** strict(전체 해시)/fast(앞 1MB), 크기 선그룹화. **선택적 적용**(분류/파일 단위).
+- **보고서** Markdown/HTML/Excel(타임스탬프, 다운로드/북마크 분리). **운영 로깅**.
+- **설정 파일(config.json)**: 분류 규칙·기준일·차단경로 추가·북마크 카테고리 override.
+- **웹 UI(Streamlit)**: 체크박스 표 선택, 진행바, 이동 후 결과 폴더 구조(요약+트리), 다크모드 대응. 북마크 탭·일괄 휴지통 탭은 기본 숨김(토글).
+- **배포**: GitHub Pages 소개 페이지(`docs/`), Streamlit Cloud 데모, EXE 빌드 스크립트. 시크릿/개인정보 미포함(보안 점검 완료).
+- **테스트**: pytest 57개 통과.
+
+---
+
 ## Core Goals
 
 1. 다운로드 폴더를 안전하게 분석한다.
@@ -237,61 +253,55 @@ datetime
 logging
 ```
 
-### Recommended External Libraries
+### External Libraries (현재 사용)
 
 ```text
-pandas
-openpyxl
-jinja2
-markdown
-streamlit
-pytest
-pyinstaller
+pandas        # 표/보고서
+openpyxl      # Excel 보고서
+streamlit     # 웹 UI
+send2trash    # 휴지통 이동(영구 삭제 대체)
+pytest        # 테스트(dev)
+pyinstaller   # EXE 빌드(선택)
 ```
 
-### Optional Libraries
-
-```text
-rich
-click
-plotly
-watchdog
-```
+> 참고: jinja2/markdown/rich/click/plotly/watchdog 는 현재 미사용(표준 라이브러리 + 위 목록만 사용).
 
 ---
 
 ## Project Structure
+
+실제 구현 구조(현재):
 
 ```text
 DownloadOrganizer/
 ├─ src/
 │  └─ download_organizer/
 │     ├─ __init__.py
-│     ├─ config.py
-│     ├─ scanner.py
-│     ├─ classifier.py
-│     ├─ organizer.py
-│     ├─ duplicate.py
-│     ├─ bookmark.py
-│     ├─ reporter.py
-│     ├─ history.py
-│     ├─ safety.py
-│     ├─ cli.py
-│     └─ web_app.py
-├─ tests/
-│  ├─ test_scanner.py
-│  ├─ test_classifier.py
-│  ├─ test_duplicate.py
-│  ├─ test_bookmark.py
-│  └─ test_history.py
-├─ reports/
-├─ logs/
-├─ examples/
-├─ pyproject.toml
-├─ requirements.txt
-├─ README.md
-├─ .gitignore
+│     ├─ config.py        # 분류 규칙·차단 경로·설정 파일 로드
+│     ├─ models.py        # FileRecord/MovePlanItem/CleanPlanItem 등 데이터클래스
+│     ├─ analyzer.py      # 스캔(재귀 옵션)·분류·중복 탐지(strict/fast)
+│     ├─ organizer.py     # 이동 계획/실행(토큰)·되돌리기·빈폴더 정리 진입
+│     ├─ cleaner.py       # 휴지통 정리(send2trash)·빈 폴더 정리
+│     ├─ bookmarks.py     # Chrome/Edge 북마크 분석·마스킹
+│     ├─ reports.py       # Markdown/HTML/Excel 보고서
+│     ├─ safety.py        # 시스템 경로 차단·스캔폴더 내부 검증
+│     ├─ logging_utils.py # 로깅
+│     ├─ service.py       # build_preview/run_organizer/run_clean 오케스트레이션
+│     └─ cli.py           # analyze/apply/undo/clean/init-config
+├─ tests/                 # pytest 57개 (분류·중복·이동/되돌리기·토큰·휴지통 등)
+├─ docs/                  # GitHub Pages 정적 소개 페이지
+├─ benchmarks/            # fast/strict 성능 측정
+├─ demo_downloads/        # 합성 데모 데이터
+├─ streamlit_app.py       # 웹 UI (저장소 루트)
+├─ pyinstaller_entry.py   # EXE 진입점
+├─ build_exe.ps1          # EXE 빌드 스크립트
+├─ requirements.txt / pyproject.toml
+├─ render.yaml / Procfile / .streamlit/config.toml   # 배포
+├─ .env.example / .gitignore
+├─ README.md / 실행방법.md / DEPLOY.md / RELEASE_NOTES.md
 └─ AGENTS.md
+
+# 실행 시 생성: workspace/{organized_files, reports, history, logs}
 ```
 
 ---
@@ -610,44 +620,49 @@ MVP에서는 다음 기능을 반드시 구현한다.
 C:/Windows
 C:/Program Files
 C:/Program Files (x86)
+C:/ProgramData
 C:/Users/*/AppData
 C:/Users/*/Desktop
 C:/Users/*/Documents
 ```
 
-단, 사용자가 명시적으로 선택한 다운로드 폴더 하위 경로는 허용한다.
+설정 파일(config.json)의 `extra_blocked_roots` 로 차단 경로를 **추가**할 수 있으나 내장 차단은 제거 불가.
+또한 실제 이동/삭제 직전, 모든 원본이 선택한 스캔 폴더 내부인지 한 번 더 검증한다(`ensure_source_within_scan_root`).
 
 ---
 
 ## Default Classification Rules
 
+분류명(=정리 폴더명)은 **한글**이며 확장자 기준이다(소문자). 매칭 안 되면 **기타**.
+(config.json `file_categories` 로 전체 교체 가능)
+
 ```text
-PDF: .pdf
-Word: .doc, .docx
-Excel: .xls, .xlsx, .csv
-PowerPoint: .ppt, .pptx
-Text: .txt, .md, .json, .xml, .yaml, .yml
-Images: .jpg, .jpeg, .png, .gif, .bmp, .webp, .svg
-Videos: .mp4, .avi, .mov, .mkv, .wmv
-Audio: .mp3, .wav, .m4a, .flac
-Compressed: .zip, .7z, .rar, .tar, .gz
-Installers: .exe, .msi, .dmg, .pkg
-Code: .py, .js, .ts, .html, .css, .java, .sql
-Etc: unmatched extensions
+문서:    .pdf, .doc, .docx, .hwp, .hwpx, .txt, .ppt, .pptx, .xls, .xlsx, .csv
+이미지:  .jpg, .jpeg, .png, .gif, .bmp, .webp, .svg
+동영상:  .mp4, .mkv, .avi, .mov, .wmv
+오디오:  .mp3, .wav, .flac, .m4a
+압축파일: .zip, .rar, .7z, .tar, .gz
+실행파일: .exe, .msi, .bat, .cmd, .ps1
+코드:    .py, .js, .ts, .java, .cpp, .c, .cs, .go, .rs, .ipynb
+기타:    위에 없는 모든 확장자
 ```
+
+옵션: `--ext-grouping`(분류/확장자/), `--date-grouping`(분류/연 또는 연-월/).
+라우팅: `--route-old` → `오래된파일/`, `--route-duplicates` → `중복파일/`.
 
 ---
 
 ## Bookmark Category Rules
 
 북마크는 도메인과 키워드를 기준으로 1차 분류한다.
+(현재 웹 UI의 북마크 탭은 기본 숨김 — CLI/백엔드/보고서에서는 지원. `SHOW_BOOKMARK_TAB=True`로 표시)
 
 ```text
-AI: openai, claude, gemini, huggingface, perplexity
-Development: github, gitlab, stackoverflow, npm, pypi, docker
-News: news, newspaper, bbc, cnn, naver news, daum news
+AI: openai, claude, anthropic, gemini, huggingface, perplexity, ollama
+Development: github, gitlab, stackoverflow, npm, pypi, docker, nodejs, visualstudio, localhost
+Public: go.kr, data.go.kr, g2b.go.kr, law.go.kr, juso.go.kr
+News: news, newspaper, bbc, cnn
 Shopping: coupang, gmarket, 11st, amazon, aliexpress
-Public: go.kr, data.go.kr, g2b.go.kr, law.go.kr
 Education: coursera, edx, inflearn, class, lecture
 Finance: bank, finance, stock, securities
 Reference: wikipedia, docs, documentation
@@ -673,12 +688,19 @@ reports/bookmark_report_YYYYMMDD_HHMMSS.xlsx
 
 ## CLI Examples
 
+실행은 analyze → apply → undo 3단계(+ clean, init-config). apply는 analyze가 출력한 토큰 필요.
+
 ```bash
-python -m download_organizer.cli scan --path "C:/Users/me/Downloads"
-python -m download_organizer.cli organize --path "C:/Users/me/Downloads" --dry-run
-python -m download_organizer.cli organize --path "C:/Users/me/Downloads" --execute
-python -m download_organizer.cli undo --history "logs/history_20260101_120000.json"
-python -m download_organizer.cli bookmarks --browser chrome
+download-organizer analyze --scan-root "C:/Users/me/Downloads"
+download-organizer apply   --scan-root "C:/Users/me/Downloads" --confirm-code <TOKEN>
+download-organizer undo    --history-file "workspace/history/move_history_YYYYMMDD_HHMMSS.json" --preview
+download-organizer undo    --history-file "workspace/history/move_history_YYYYMMDD_HHMMSS.json"
+download-organizer clean   --scan-root "C:/Users/me/Downloads" --trash-duplicates --confirm-code <TOKEN>
+download-organizer init-config --path download_organizer.config.json
+
+# 주요 옵션: --recursive/--no-recursive, --ext-grouping, --date-grouping year|month,
+#            --dup-mode strict|fast, --include-category/--exclude-category,
+#            --route-old, --route-duplicates, --remove-empty-dirs, --no-bookmarks, --config
 ```
 
 ---
@@ -686,15 +708,15 @@ python -m download_organizer.cli bookmarks --browser chrome
 ## Streamlit Run Example
 
 ```bash
-streamlit run src/download_organizer/web_app.py
+streamlit run streamlit_app.py
 ```
 
 ---
 
 ## PyInstaller Build Example
 
-```bash
-pyinstaller --onefile --name DownloadOrganizer src/download_organizer/cli.py
+```powershell
+.\build_exe.ps1            # dist\download-organizer.exe (내부적으로 pyinstaller_entry.py 사용)
 ```
 
 ---
