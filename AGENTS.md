@@ -308,6 +308,9 @@ DownloadOrganizer/
 
 ## Role Instructions
 
+> 아래 역할/프롬프트와 일부 모듈명(scanner.py·classifier.py·web_app.py 등)은 **기획 단계의 작업 지시 기록**입니다.
+> 실제 구현 구조·동작은 위의 **"구현 현황"** 과 **Project Structure** 를 참고하세요.
+
 ## 1. Sisyphus - Ultraworker
 
 ### Role
