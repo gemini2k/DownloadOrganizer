@@ -1,10 +1,41 @@
+# --- Python ---
 __pycache__/
 .pytest_cache/
 .venv/
-workspace/
-workspace_*/
-demo_output/
 *.pyc
+*.egg-info/
+
+# --- Build / packaging ---
 build/
 dist/
 *.spec
+
+# --- App runtime outputs (개인 북마크·보고서·이력·로그 — 절대 커밋 금지) ---
+workspace/
+workspace_*/
+demo_output/
+
+# --- Secrets / environment (절대 커밋 금지) ---
+.env
+.env.*
+!.env.example
+
+# --- Personal data / 업로드·백업·결과물 (절대 커밋 금지) ---
+data/
+upload/
+uploads/
+backup/
+backups/
+result/
+results/
+
+# --- 개인정보가 들어갈 수 있는 문서/데이터 파일 (합성 demo_downloads만 예외) ---
+*.hwp
+*.hwpx
+*.csv
+*.xls
+*.xlsx
+*.pdf
+*.docx
+*.pptx
+!demo_downloads/**

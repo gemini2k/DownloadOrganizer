@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -15,7 +16,7 @@ from .analyzer import analyze_files, duplicate_groups
 from .config import FILE_CATEGORIES  # noqa: F401  (kept for parity / future use)
 from .models import CleanPlanItem, FileRecord, TrashOutcome
 from .organizer import organized_dir_names
-from .safety import ensure_safe_scan_root, ensure_source_within_scan_root
+from .safety import ensure_safe_scan_root, ensure_source_within_scan_root, is_within
 
 logger = logging.getLogger("download_organizer")
 
@@ -135,3 +136,34 @@ def execute_clean(
     logger.info("clean complete: trashed=%d failed=%d history=%s",
                 len(outcome.trashed), len(outcome.failures), history_file)
     return outcome
+
+
+def trash_empty_dirs(
+    scan_root: Path, *, target_root: Path | None = None, exclude_dirs: list[str] | None = None
+) -> list[str]:
+    """Send now-empty subfolders under scan_root to the Recycle Bin (recoverable).
+
+    Useful after a recursive move, which empties the original subfolders. Only EMPTY
+    directories are removed (no data loss). Never touches scan_root itself, the organized
+    output folders, excluded names, or anything outside scan_root. Bottom-up so that a
+    folder containing only (now-removed) empty subfolders is also cleaned.
+    """
+    scan_root = Path(scan_root)
+    skip_names = set(organized_dir_names()) | {d for d in (exclude_dirs or []) if d.strip()}
+    removed: list[str] = []
+    for dirpath, _dirs, _files in os.walk(scan_root, topdown=False):
+        p = Path(dirpath)
+        if p == scan_root or p.name in skip_names:
+            continue
+        if target_root is not None and is_within(p, target_root):
+            continue
+        try:
+            if any(p.iterdir()):  # not empty (live check — children may already be gone)
+                continue
+            ensure_source_within_scan_root(p, scan_root)
+            _send_to_trash(p)
+            removed.append(str(p))
+            logger.info("trashed empty dir (recycle bin): %s", p)
+        except Exception as exc:  # noqa: BLE001 - record and continue
+            logger.error("empty-dir trash failed: %s (%s)", p, exc)
+    return removed

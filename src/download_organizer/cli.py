@@ -42,6 +42,8 @@ def _add_common_scan_args(p: argparse.ArgumentParser) -> None:
                    help="Route old-file candidates to a _old_files review folder")
     p.add_argument("--route-duplicates", action="store_true",
                    help="Route duplicate candidates to a _duplicates review folder (no deletion)")
+    p.add_argument("--remove-empty-dirs", action="store_true",
+                   help="After moving, send now-empty subfolders to the Recycle Bin (recoverable)")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -105,6 +107,7 @@ def _result_payload(r: RunResult, *, dry_run: bool) -> dict[str, object]:
         "bookmarks": r.bookmark_count,
         "moved": r.moved_count,
         "failures": r.failure_count,
+        "empty_dirs_removed": r.empty_dirs_removed,
         "history_file": str(r.history_file) if r.history_file else None,
         "download_reports": {k: str(v) for k, v in r.download_reports.items()},
         "bookmark_reports": {k: str(v) for k, v in r.bookmark_reports.items()},
@@ -208,6 +211,7 @@ def main() -> int:
             ext_grouping=args.ext_grouping,
             route_old=args.route_old,
             route_duplicates=args.route_duplicates,
+            remove_empty_dirs=args.remove_empty_dirs,
             select=select,
             confirm_code=confirm_code,
         )

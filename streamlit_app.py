@@ -308,6 +308,7 @@ def run_kwargs(params: dict) -> dict:
         "ext_grouping": params["ext_grouping"],
         "route_old": params["route_old"],
         "route_duplicates": params["route_duplicates"],
+        "remove_empty_dirs": params["remove_empty_dirs"],
     }
 
 
@@ -350,6 +351,8 @@ with st.sidebar:
         exclude_dirs_text = st.text_input("재귀 시 제외할 폴더명 (쉼표 구분)", value="",
                                           placeholder="node_modules, .git", disabled=not recursive,
                                           help="재귀 검색에서 건너뛸 폴더 이름")
+        remove_empty_dirs = st.checkbox("이동 후 빈 폴더 정리 (휴지통)", value=False,
+                                        help="재귀 정리로 비게 된 하위폴더를 휴지통으로 보냅니다(복구 가능, 빈 폴더만).")
         dup_mode = st.radio("중복 탐지 모드", options=["strict", "fast"], horizontal=True,
                             format_func=lambda x: {"strict": "정확(strict)", "fast": "빠름(fast)"}[x],
                             help="정확=전체 해시, 빠름=앞 1MB 해시(대용량에 빠르나 과다검출 가능)")
@@ -406,6 +409,7 @@ current_settings = {
     "ext_grouping": ext_grouping,
     "route_old": route_old,
     "route_duplicates": route_duplicates,
+    "remove_empty_dirs": remove_empty_dirs,
 }
 
 # --------------------------------------------------------------------------- #
@@ -753,6 +757,8 @@ with tab_run:
             msg = f"🚚 이동 완료: {result.moved_count}건"
             if result.failure_count:
                 msg += f" / 실패 {result.failure_count}건 (이력 파일 확인)"
+            if result.empty_dirs_removed:
+                msg += f" · 빈 폴더 {result.empty_dirs_removed}개 휴지통 정리"
             msg += f"\n\n이력 파일: {result.history_file}"
             st.session_state["last_action"] = msg
             st.session_state.pop("preview", None)  # plan is now stale

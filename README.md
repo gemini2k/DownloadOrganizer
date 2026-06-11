@@ -44,6 +44,15 @@ python -m venv .venv
 pip install -e .
 ```
 
+## 환경 변수
+
+이 프로그램은 **API 키·토큰·시크릿 등 환경 변수가 필요 없습니다.** 외부 서비스 호출 없이
+로컬 파일만 다루기 때문입니다. (`.env.example` 참고 — 비워 두어도 정상 동작)
+
+| 변수 | 필수 | 설명 |
+|------|:---:|------|
+| (없음) | — | 동작에 필요한 비밀/환경 변수 없음 |
+
 ## CLI 사용법
 
 실행은 **analyze → apply → undo** 3단계로 분리됩니다.
@@ -90,8 +99,9 @@ download-organizer clean --scan-root "C:\Users\USER\Downloads" --trash-duplicate
 | `--date-grouping none\|year\|month` | (확장자) 폴더 아래 수정일 기준 하위 폴더(예: `문서/pdf/2025/`) | `none` |
 | `--include-category CAT` | 해당 분류만 이동(반복 가능). 미지정 시 전체 | 전체 |
 | `--exclude-category CAT` | 해당 분류는 이동 제외(반복 가능) | 없음 |
-| `--route-old` | 오래된 파일 후보를 `_old_files` 검토 폴더로 분리 | off |
-| `--route-duplicates` | 중복 후보를 `_duplicates` 검토 폴더로 분리(삭제 아님) | off |
+| `--route-old` | 오래된 파일 후보를 `오래된파일` 검토 폴더로 분리 | off |
+| `--route-duplicates` | 중복 후보를 `중복파일` 검토 폴더로 분리(삭제 아님) | off |
+| `--remove-empty-dirs` | 이동 후 비게 된 하위폴더를 휴지통으로 정리(복구 가능, 빈 폴더만) | off |
 | `--no-bookmarks` | 북마크 분석 제외(개인정보 보호) | 포함 |
 
 > **선택적 적용**: `analyze`와 `apply`에 동일한 `--include-category`/`--exclude-category`를 주면, 토큰이 *선택된 부분 집합* 기준으로 계산되어 그 부분만 안전하게 이동됩니다. 웹 UI에서는 "이동 미리보기" 탭에서 파일을 직접 제외할 수 있습니다.

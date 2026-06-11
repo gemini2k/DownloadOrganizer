@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import cast
 
 from .bookmarks import analyze_bookmarks, duplicate_urls
-from .cleaner import build_clean_plan, compute_clean_token, execute_clean
+from .cleaner import build_clean_plan, compute_clean_token, execute_clean, trash_empty_dirs
 from .models import CleanPlanItem, FileRecord, MovePlanItem
 from .organizer import build_move_plan, compute_plan_token, execute_plan
 from .reports import write_bookmark_reports, write_download_reports
@@ -46,6 +46,7 @@ class RunResult:
     failure_count: int
     download_reports: dict[str, Path]
     bookmark_reports: dict[str, Path]
+    empty_dirs_removed: int = 0
 
 
 class ConfirmationError(Exception):
@@ -187,6 +188,7 @@ def run_organizer(
     ext_grouping: bool = False,
     route_old: bool = False,
     route_duplicates: bool = False,
+    remove_empty_dirs: bool = False,
     select: Callable[[MovePlanItem], bool] | None = None,
     confirm_code: str | None = None,
     progress: Callable[[int, int, str], None] | None = None,
@@ -242,12 +244,17 @@ def run_organizer(
     history_file: Path | None = None
     moved_count = 0
     failure_count = 0
+    empty_removed = 0
     if not dry_run:
         outcome = execute_plan(plan_to_apply, history_root, confirm=confirm_move, scan_root=scan_root,
                                progress=progress)
         history_file = outcome.history_file
         moved_count = len(outcome.moved)
         failure_count = len(outcome.failures)
+        if remove_empty_dirs and moved_count:
+            empty_removed = len(trash_empty_dirs(
+                scan_root, target_root=output_root / "organized_files", exclude_dirs=exclude_dirs,
+            ))
 
     return RunResult(
         records_count=len(preview.records),
@@ -263,4 +270,5 @@ def run_organizer(
         failure_count=failure_count,
         download_reports=download_reports,
         bookmark_reports=bookmark_reports,
+        empty_dirs_removed=empty_removed,
     )

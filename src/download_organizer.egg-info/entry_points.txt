@@ -1,2 +1,0 @@
-[console_scripts]
-download-organizer = download_organizer.cli:main

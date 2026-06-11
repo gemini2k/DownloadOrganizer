@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from download_organizer import cleaner, safety
-from download_organizer.cleaner import build_clean_plan, compute_clean_token, execute_clean
+from download_organizer.cleaner import build_clean_plan, compute_clean_token, execute_clean, trash_empty_dirs
 from download_organizer.service import ConfirmationError, run_clean
 
 
@@ -99,6 +99,25 @@ def test_protect_allows_partial_duplicate_selection(downloads: Path):
         protect_duplicate_groups=True,
     )
     assert {i.path.name for i in items} == {"dup1.txt", "dup2.txt"}
+
+
+def test_trash_empty_dirs_cascades_and_keeps_nonempty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(safety, "blocked_roots", lambda: [])
+    d = tmp_path / "Downloads"
+    (d / "sub" / "nested").mkdir(parents=True)   # both empty -> should be removed
+    (d / "hasfile").mkdir()
+    (d / "hasfile" / "f.txt").write_text("y")     # non-empty -> kept
+    (d / "keep.txt").write_text("x")
+
+    trashed: list[str] = []
+    fake = types.ModuleType("send2trash")
+    fake.send2trash = lambda p: (trashed.append(str(p)), Path(p).rmdir())  # emulate real removal
+    monkeypatch.setitem(sys.modules, "send2trash", fake)
+
+    removed = trash_empty_dirs(d, target_root=tmp_path / "out")
+    assert set(removed) == {str(d / "sub" / "nested"), str(d / "sub")}
+    assert (d / "hasfile").exists()   # has a file -> kept
+    assert (d / "keep.txt").exists()  # top-level file untouched
 
 
 def test_execute_refuses_outside_scan_root(downloads: Path, tmp_path: Path, fake_trash):
