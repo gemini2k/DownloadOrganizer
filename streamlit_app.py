@@ -232,7 +232,7 @@ def trash_groups_ui(groups, params: dict, key: str) -> None:
                     "크기": st.column_config.TextColumn("크기", disabled=True),
                 },
             )
-            picked = [str(r["경로"]) for _, r in edited.iterrows() if r["삭제"]]
+            picked = [str(r["경로"]) for _, r in edited.iterrows() if bool(r.get("삭제", False))]
             if picked and len(picked) == len(group):
                 st.error(f"⚠️ 그룹 {idx}: 모든 사본을 선택했습니다. 최소 1개는 남겨주세요(이 그룹은 제외됩니다).")
             else:
@@ -278,7 +278,7 @@ def trash_table_ui(records, params: dict, key: str) -> None:
             "경로": st.column_config.TextColumn("경로", disabled=True, width="large"),
         },
     )
-    selected = [str(r["경로"]) for _, r in edited.iterrows() if r["삭제"]]
+    selected = [str(r["경로"]) for _, r in edited.iterrows() if bool(r.get("삭제", False))]
     st.divider()
     _trash_confirm_and_run(selected, size_map, params, key)
 
@@ -333,6 +333,10 @@ st.markdown(
 st.title("🗂️ Download 폴더 관리자")
 st.caption("기본은 **미리보기(Dry-run)** 입니다. 명시적으로 확인하기 전에는 어떤 파일도 이동하지 않습니다.")
 
+# --- UI 탭 표시 토글 (다시 켜려면 True) ---
+SHOW_BOOKMARK_TAB = False   # 북마크 기능 미사용 → 탭/옵션/지표/분석 모두 숨김
+SHOW_CLEAN_TAB = False      # 일괄 휴지통 정리 탭(중복/오래된 탭에서 개별 정리 가능하므로 기본 숨김)
+
 # --------------------------------------------------------------------------- #
 # Sidebar — settings
 # --------------------------------------------------------------------------- #
@@ -383,14 +387,17 @@ with st.sidebar:
         route_duplicates = st.checkbox("중복 파일을 '중복파일' 폴더로 분리", value=False,
                                        help="삭제하지 않고 검토용으로 한곳에 모읍니다.")
 
-    with st.expander("🔖 북마크 옵션", expanded=False):
-        include_bookmarks = st.checkbox("브라우저 북마크 분석 포함", value=True,
-                                        help="Chrome/Edge 기본 프로필의 북마크를 읽습니다. 개인정보가 포함될 수 있습니다.")
-        mask_query = st.checkbox("북마크 URL 쿼리 마스킹", value=True,
-                                 help="보고서에서 ?뒤의 쿼리스트링/프래그먼트를 제거(토큰/ID 노출 방지).")
-        exclude_text = st.text_input("북마크 제외 도메인 (쉼표 구분)", value="",
-                                     placeholder="bank, mail.google.com",
-                                     help="이 문자열이 도메인에 포함된 북마크는 분석에서 제외")
+    if SHOW_BOOKMARK_TAB:
+        with st.expander("🔖 북마크 옵션", expanded=False):
+            include_bookmarks = st.checkbox("브라우저 북마크 분석 포함", value=True,
+                                            help="Chrome/Edge 기본 프로필의 북마크를 읽습니다. 개인정보가 포함될 수 있습니다.")
+            mask_query = st.checkbox("북마크 URL 쿼리 마스킹", value=True,
+                                     help="보고서에서 ?뒤의 쿼리스트링/프래그먼트를 제거(토큰/ID 노출 방지).")
+            exclude_text = st.text_input("북마크 제외 도메인 (쉼표 구분)", value="",
+                                         placeholder="bank, mail.google.com",
+                                         help="이 문자열이 도메인에 포함된 북마크는 분석에서 제외")
+    else:
+        include_bookmarks, mask_query, exclude_text = False, True, ""
 
     with st.expander("🛠️ 고급 (설정 파일)", expanded=False):
         config_path = st.text_input("설정 파일 경로 (선택)", value="",
@@ -483,28 +490,34 @@ if current_settings != params:
 # Summary metrics
 # --------------------------------------------------------------------------- #
 total_size = sum(r.size for r in preview.records)
-c1, c2, c3, c4, c5, c6 = st.columns(6)
-c1.metric("총 파일", f"{len(preview.records):,}")
-c2.metric("총 용량", human_size(total_size))
-c3.metric("이동 예정", f"{len(preview.plan):,}")
-c4.metric("중복 그룹", f"{len(preview.duplicates):,}")
-c5.metric("오래된 파일", f"{len(preview.old_files):,}")
-c6.metric("북마크", f"{len(preview.bookmarks):,}")
+cols = st.columns(6 if SHOW_BOOKMARK_TAB else 5)
+cols[0].metric("총 파일", f"{len(preview.records):,}")
+cols[1].metric("총 용량", human_size(total_size))
+cols[2].metric("이동 예정", f"{len(preview.plan):,}")
+cols[3].metric("중복 그룹", f"{len(preview.duplicates):,}")
+cols[4].metric("오래된 파일", f"{len(preview.old_files):,}")
+if SHOW_BOOKMARK_TAB:
+    cols[5].metric("북마크", f"{len(preview.bookmarks):,}")
 st.caption(
     f"스캔 범위: {'하위폴더 포함(재귀)' if preview.recursive else '최상위 파일만'}"
     + ("  ·  정리 분류 폴더는 자동 제외됨" if preview.recursive else "")
 )
 
-# 일괄 "휴지통 정리" 탭 표시 여부. 중복/오래된 탭에서 개별 휴지통 정리가 가능하므로 기본 숨김.
-# 다시 켜려면 True 로 변경하세요.
-SHOW_CLEAN_TAB = False
-
-_tab_labels = ["📊 요약", "📦 이동 미리보기", "♊ 중복", "🕰️ 오래된 파일", "🔖 북마크", "🚀 실행 / 되돌리기"]
+_tab_labels = ["📊 요약", "📦 이동 미리보기", "♊ 중복", "🕰️ 오래된 파일"]
+if SHOW_BOOKMARK_TAB:
+    _tab_labels.append("🔖 북마크")
+_tab_labels.append("🚀 실행 / 되돌리기")
 if SHOW_CLEAN_TAB:
     _tab_labels.append("🗑️ 휴지통 정리")
-_tabs = st.tabs(_tab_labels)
-tab_summary, tab_plan, tab_dups, tab_old, tab_bookmarks, tab_run = _tabs[:6]
-tab_clean = _tabs[6] if SHOW_CLEAN_TAB else None
+
+_tabs = iter(st.tabs(_tab_labels))
+tab_summary = next(_tabs)
+tab_plan = next(_tabs)
+tab_dups = next(_tabs)
+tab_old = next(_tabs)
+tab_bookmarks = next(_tabs) if SHOW_BOOKMARK_TAB else None
+tab_run = next(_tabs)
+tab_clean = next(_tabs) if SHOW_CLEAN_TAB else None
 
 # --- 요약 ------------------------------------------------------------------- #
 with tab_summary:
@@ -592,7 +605,7 @@ with tab_plan:
                 "_src": None,  # 식별용 숨김 컬럼
             },
         )
-        excluded = [str(r["_src"]) for _, r in edited.iterrows() if not r["이동"]]
+        excluded = [str(r["_src"]) for _, r in edited.iterrows() if not bool(r.get("이동", False))]
         st.session_state["excluded_srcs"] = excluded
         excluded_set = set(excluded)
         selected_items = [p for p in preview.plan if str(p.src) not in excluded_set]
@@ -624,85 +637,7 @@ with tab_old:
         st.caption("지울 파일의 **삭제** 칸을 체크하세요. 경로로 폴더를 구분할 수 있으며, 휴지통(복구 가능)으로 이동합니다.")
         trash_table_ui(list(preview.old_files), params, key="old_trash")
 
-# --- 북마크 ----------------------------------------------------------------- #
-with tab_bookmarks:
-    if not params["include_bookmarks"]:
-        st.info("북마크 분석이 비활성화되어 있습니다. 사이드바에서 활성화하세요.")
-    elif not preview.bookmarks:
-        st.info("읽을 수 있는 Chrome/Edge 북마크가 없습니다.")
-    else:
-        bookmark_rows_ko: list[dict[str, str]] = []
-        category_counts: dict[str, int] = {}
-        domain_counts: dict[str, int] = {}
-
-        for row in preview.bookmarks:
-            category_ko = ko_bookmark_category(str(row.get("category", "Etc")))
-            domain = str(row.get("domain", ""))
-            category_counts[category_ko] = category_counts.get(category_ko, 0) + 1
-            domain_counts[domain] = domain_counts.get(domain, 0) + 1
-            bookmark_rows_ko.append(
-                {
-                    "브라우저": str(row.get("browser", "")),
-                    "폴더": str(row.get("folder", "")),
-                    "이름": str(row.get("name", "")),
-                    "URL": str(row.get("url", "")),
-                    "도메인": domain,
-                    "카테고리": category_ko,
-                }
-            )
-
-        bdf_ko = pd.DataFrame(bookmark_rows_ko)
-
-        category_chart_rows = [
-            {"카테고리": category, "개수": count}
-            for category, count in sorted(category_counts.items(), key=lambda x: (-x[1], x[0]))
-        ]
-        domain_chart_rows = [
-            {"도메인": domain, "개수": count}
-            for domain, count in sorted(domain_counts.items(), key=lambda x: (-x[1], x[0]))[:15]
-        ]
-
-        def _count_bar(rows, field):  # 개수 내림차순을 그대로 유지(vega-lite)
-            data = pd.DataFrame(rows)
-            st.vega_lite_chart(
-                data,
-                {
-                    "mark": {"type": "bar", "color": "#1f77b4"},
-                    "encoding": {
-                        "x": {"field": field, "type": "nominal", "sort": data[field].tolist(),
-                              "axis": {"labelAngle": -40}},
-                        "y": {"field": "개수", "type": "quantitative"},
-                        "tooltip": [{"field": field}, {"field": "개수"}],
-                    },
-                },
-                use_container_width=True,
-            )
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown("**카테고리별**")
-            _count_bar(category_chart_rows, "카테고리")
-        with col_b:
-            st.markdown("**도메인 상위 15**")
-            _count_bar(domain_chart_rows, "도메인")
-
-        if preview.bookmark_duplicates:
-            st.markdown(f"**중복 URL — {len({r['url'] for r in preview.bookmark_duplicates})}개**")
-            dup_rows_ko = [
-                {
-                    "이름": str(row.get("name", "")),
-                    "URL": str(row.get("url", "")),
-                    "카테고리": ko_bookmark_category(str(row.get("category", "Etc"))),
-                }
-                for row in preview.bookmark_duplicates
-            ]
-            st.dataframe(
-                pd.DataFrame(dup_rows_ko),
-                use_container_width=True,
-                hide_index=True,
-            )
-        with st.expander("전체 북마크 보기"):
-            paginated_dataframe(bdf_ko, key="bookmarks")
+# 북마크 탭은 현재 UX 요청에 따라 숨김 처리.
 
 # --- 실행 / 되돌리기 -------------------------------------------------------- #
 with tab_run:
