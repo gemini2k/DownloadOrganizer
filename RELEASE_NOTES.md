@@ -1,5 +1,16 @@
 # Release Notes
 
+## v0.14.0 — 결과 보기 · 배포 · UI 정리
+
+- **이동 후 결과 폴더 구조 표시**: 실행 직후 분류 폴더별 요약 표 + 폴더 트리 + 출력 경로(다음 분석 전까지 유지).
+- **북마크 탭 기본 숨김**(`SHOW_BOOKMARK_TAB`), 일괄 "휴지통 정리" 탭도 기본 숨김(`SHOW_CLEAN_TAB`).
+  북마크 분석은 CLI/백엔드에선 그대로 지원.
+- **앱 제목 "Download 폴더 관리자"**, 개발자 툴바 숨김(`toolbarMode=minimal` — "Clear caches" 팝업 제거).
+- **배포 자산**: GitHub Pages 소개 페이지(`docs/index.html`) + 발표자료 다운로드, Streamlit Cloud 데모 연결,
+  `requirements.txt`/`render.yaml`/`Procfile`/Pages 워크플로, 보안 하드닝(.gitignore·`.env.example`).
+- **온라인 데모 편의**: 서버(또는 Downloads 폴더 부재) 시 스캔 경로를 `demo_downloads`로 자동 설정 + "📁 데모 샘플 폴더 사용" 버튼.
+- **데모 데이터 보강**: 모든 분류·중복(폴더 넘는 중복)·하위폴더를 포함한 합성 샘플 46개.
+
 ## v0.13.0 — 이동 후 빈 폴더 정리
 
 - 재귀 정리로 **비게 된 하위폴더**를 정리하는 옵션 추가(`--remove-empty-dirs`, 웹 "이동 후 빈 폴더 정리").

@@ -16,14 +16,17 @@
 - **3단계 실행**: `analyze`(미리보기·토큰 발급) → `apply`(계획 토큰 확인) → `undo`(되돌리기)
 - **선택적 적용**: 파일/분류 단위로 일부만 이동
 - 이동 이력 저장 + 되돌리기(+ `--preview`로 사전 확인)
+- **이동 후 결과 폴더 구조 표시**(웹): 분류 폴더별 파일 수·용량 요약 + 폴더 트리
+- 분류명·폴더는 **한글**(문서/이미지/동영상/오디오/압축파일/실행파일/코드/기타)
 - **휴지통 정리(`clean`)**: 중복 사본(그룹당 1개 보존)·오래된 파일·선택 분류를 **휴지통으로**(영구 삭제 아님, 복구 가능)
+- **이동 후 빈 폴더 정리** 옵션(`--remove-empty-dirs`, 휴지통)
 - 중복 파일 그룹 탐지 (`strict`/`fast` 모드, 자동 삭제 없음)
-- 오래된 파일 탐지, 오래된/중복 파일 **분리 폴더 라우팅**(`_old_files`/`_duplicates`) 옵션
-- Chrome/Edge 북마크 분석 (도메인/카테고리, URL 쿼리 마스킹·도메인 제외 옵션)
+- 오래된 파일 탐지, 오래된/중복 파일 **분리 폴더 라우팅**(`오래된파일`/`중복파일`) 옵션
+- Chrome/Edge 북마크 분석 (도메인/카테고리, URL 쿼리 마스킹·도메인 제외) — *웹 UI 탭은 기본 숨김, CLI/백엔드는 지원*
 - 타임스탬프 Markdown/HTML/Excel 보고서 생성 (다운로드/북마크 분리)
 - 사용자 **설정 파일(config.json)**: 분류 규칙·기준 일수·차단 경로·북마크 카테고리 override
 - 운영 로깅(스캔/이동/실패/되돌리기)
-- Streamlit 웹 UI (지표·탭·페이징·다운로드)
+- Streamlit 웹 UI (지표·탭·페이징·진행바·다운로드·결과 트리, 다크모드 대응)
 - PyInstaller EXE 빌드 스크립트(`build_exe.ps1`)
 
 ## 안전 원칙
@@ -104,11 +107,12 @@ download-organizer clean --scan-root "C:\Users\USER\Downloads" --trash-duplicate
 | `--route-duplicates` | 중복 후보를 `중복파일` 검토 폴더로 분리(삭제 아님) | off |
 | `--remove-empty-dirs` | 이동 후 비게 된 하위폴더를 휴지통으로 정리(복구 가능, 빈 폴더만) | off |
 | `--no-bookmarks` | 북마크 분석 제외(개인정보 보호) | 포함 |
-
-> **선택적 적용**: `analyze`와 `apply`에 동일한 `--include-category`/`--exclude-category`를 주면, 토큰이 *선택된 부분 집합* 기준으로 계산되어 그 부분만 안전하게 이동됩니다. 웹 UI에서는 "이동 미리보기" 탭에서 파일을 직접 제외할 수 있습니다.
 | `--mask-bookmark-query` | 북마크 URL의 쿼리스트링/프래그먼트 제거 | off |
 | `--exclude-domain DOMAIN` | 해당 문자열이 포함된 도메인 북마크 제외(반복 가능) | 없음 |
+| `--config 경로` | 분류 규칙 등 config.json 적용 | 기본값 |
 
+> **선택적 적용**: `analyze`와 `apply`에 동일한 `--include-category`/`--exclude-category`를 주면, 토큰이 *선택된 부분 집합* 기준으로 계산되어 그 부분만 안전하게 이동됩니다. 웹 UI에서는 "이동 미리보기" 탭에서 파일을 직접 제외할 수 있습니다.
+>
 > `run` 명령은 deprecated 별칭으로 `analyze`와 동일하게 동작하며, `run --apply`는 차단되고 `apply`로 안내됩니다.
 
 ## 설정 파일 (config.json)
@@ -137,7 +141,9 @@ config.json 키:
 streamlit run streamlit_app.py
 ```
 
-웹 UI는 사이드바에서 경로/기준/중복모드/북마크 마스킹·제외 도메인을 설정하고 **분석(미리보기)** 을 누르면, 요약 지표·이동 미리보기 표·중복/오래된 파일 목록·북마크 차트를 탭으로 보여줍니다. 보고서 다운로드와 되돌리기도 같은 화면에서 가능하며, 실제 이동은 **체크박스 + 계획 확인 토큰 입력**의 2단계 게이트를 거쳐야만 실행됩니다(CLI와 동일한 토큰).
+웹 UI는 사이드바(정리/북마크/고급 옵션 그룹)에서 설정하고 **분석(미리보기)** 을 누르면, 요약 지표·이동 미리보기·중복·오래된 파일을 탭으로 보여줍니다. 이동/오래된 탭은 **체크박스 표**로 파일을 직접 골라 이동하거나 휴지통으로 보낼 수 있습니다. 실제 이동은 **체크박스 + 계획 확인 토큰 입력**의 2단계 게이트를 거치며, 진행바와 함께 실행되고 완료 후 **결과 폴더 구조(요약 표 + 트리)** 가 표시됩니다.
+
+> 북마크 탭은 기본 숨김입니다(`streamlit_app.py`의 `SHOW_BOOKMARK_TAB = True`로 다시 표시). 일괄 "휴지통 정리" 탭도 기본 숨김(`SHOW_CLEAN_TAB`) — 중복/오래된 탭에서 개별 정리가 가능합니다.
 
 ## 테스트
 
@@ -156,7 +162,7 @@ python benchmarks/bench_dup_mode.py --count 30 --size-mb 20
 
 - `workspace/reports/download_organizer_report_YYYYMMDD_HHMMSS.{md,html,xlsx}`
 - `workspace/reports/bookmark_report_YYYYMMDD_HHMMSS.{md,html,xlsx}` (북마크 분석 시)
-- `workspace/organized_files/_old_files/`, `workspace/organized_files/_duplicates/` (라우팅 옵션 사용 시)
+- `workspace/organized_files/<분류>/...` (실제 이동 시. 라우팅 옵션 시 `오래된파일`/`중복파일` 폴더)
 - `workspace/history/move_history_*.json` (실제 이동 시)
 - `workspace/history/trash_history_*.json` (휴지통 정리 시; 복구는 휴지통에서)
 - `workspace/logs/download_organizer.log` (스캔/이동/실패/되돌리기/휴지통 정리 기록)
