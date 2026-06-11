@@ -1,0 +1,36 @@
+# 원격저장소에 업로드
+git push origin main
+
+# 소개페이지
+https://gemini2k.github.io/DownloadOrganizer/
+https://downloadorganizer-gemini2k.streamlit.app/
+
+# 실행방법
+git clone https://github.com/gemini2k/DownloadOrganizer.git
+cd DownloadOrganizer
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+pip install -e .
+
+# 웹 UI 실행
+streamlit run streamlit_app.py
+
+기본 흐름: analyze → apply → undo
+1) 분석(미리보기, 이동 없음) — 보고서 생성 + 확인 토큰 출력
+download-organizer analyze --scan-root "C:\Users\USER\Downloads"
+출력 끝의 hint에 그대로 실행할 apply 명령과 토큰이 나옵니다.
+
+2) 실제 이동 — analyze가 준 토큰을 --confirm-code로 넣어야 실행
+download-organizer apply --scan-root "C:\Users\USER\Downloads" --confirm-code <토큰>
+토큰이 없거나 틀리면 100% 차단됩니다(status: blocked).
+
+3) 되돌리기
+:: 무엇이 복원/건너뜀될지 먼저 확인(이동 없음)
+download-organizer undo --history-file "workspace\history\move_history_YYYYMMDD_HHMMSS.json" --preview
+:: 실제 되돌리기
+download-organizer undo --history-file "workspace\history\move_history_YYYYMMDD_HHMMSS.json"
+
+
+download-organizer --help
+download-organizer analyze --help
+download-organizer apply --help
