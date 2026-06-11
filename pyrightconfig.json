@@ -1,0 +1,13 @@
+{
+  "typeCheckingMode": "basic",
+  "extraPaths": ["src"],
+  "reportMissingTypeStubs": false,
+  "reportAny": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnusedCallResult": false,
+  "reportUnusedImport": false,
+  "reportMissingTypeArgument": false,
+  "reportUnknownParameterType": false
+}
