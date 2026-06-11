@@ -1,0 +1,12 @@
+# Render.com Blueprint — 무료 웹 서비스로 Streamlit 앱 배포
+# 주의: 공개 배포는 "서버"의 파일을 다루는 데모입니다. 실제 정리는 로컬 실행 권장.
+services:
+  - type: web
+    name: download-organizer
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"

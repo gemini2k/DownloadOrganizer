@@ -1,0 +1,6 @@
+# Streamlit Community Cloud / Render / Railway 배포용 의존성
+# (로컬은 `pip install -e .` 권장)
+streamlit>=1.40.0
+pandas>=2.2.0
+openpyxl>=3.1.0
+send2trash>=1.8.0

@@ -2,6 +2,11 @@
 
 다운로드 폴더를 안전하게 분석/분류하고, 정리 결과를 Markdown/HTML/Excel로 생성하는 Python 프로그램입니다.
 
+- 🌐 **소개 페이지(GitHub Pages)**: https://gemini2k.github.io/DownloadOrganizer/
+- 🚀 **배포 방법**: [DEPLOY.md](DEPLOY.md) 참고
+
+> ⚠️ 이 도구는 **로컬 파일**을 다루는 데스크톱형 앱입니다. 공개 웹(Streamlit Cloud 등)에 올리면 **서버의 파일**을 대상으로 동작하므로, 실제 정리는 **각자 PC에서 로컬 실행**하세요. 온라인은 데모용입니다.
+
 ## 포함 기능
 
 - 다운로드 폴더 스캔 (기본 최상위, `--recursive`로 하위폴더까지)

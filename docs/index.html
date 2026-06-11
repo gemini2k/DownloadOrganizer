@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Download 폴더 관리자</title>
+<meta name="description" content="다운로드 폴더를 안전하게 분석·분류하고 보고서를 만드는 Python 도구. 미리보기·되돌리기·휴지통 정리 지원." />
+<style>
+  :root{
+    --bg:#0f172a; --card:#111c34; --ink:#e6edf6; --muted:#9fb0c7;
+    --brand:#3b82f6; --brand2:#22c55e; --border:rgba(148,163,184,.18);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+       background:linear-gradient(180deg,#0b1222,#0f172a 40%);color:var(--ink);line-height:1.65}
+  a{color:#93c5fd;text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px}
+  header{padding:64px 0 28px;text-align:center}
+  .logo{font-size:54px}
+  h1{font-size:2.3rem;margin:.3em 0 .15em}
+  .tag{color:var(--muted);font-size:1.12rem;margin:0 auto 22px;max-width:680px}
+  .btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .btn{display:inline-block;padding:12px 20px;border-radius:10px;font-weight:600;border:1px solid var(--border)}
+  .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .note{margin:26px auto 0;max-width:760px;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);
+        color:#fcd9a3;border-radius:12px;padding:14px 18px;font-size:.96rem;text-align:left}
+  section{padding:30px 0;border-top:1px solid var(--border)}
+  h2{font-size:1.45rem;margin:.2em 0 .6em}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+  .card h3{margin:.1em 0 .4em;font-size:1.06rem}
+  .card p{margin:0;color:var(--muted);font-size:.95rem}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+  pre{background:#0b1326;border:1px solid var(--border);border-radius:12px;padding:16px 18px;overflow:auto;font-size:.9rem}
+  ul.safe{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+  ul.safe li{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:10px 14px}
+  footer{padding:40px 0 60px;text-align:center;color:var(--muted);font-size:.9rem;border-top:1px solid var(--border)}
+  .pill{display:inline-block;font-size:.78rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px 10px;margin:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🗂️</div>
+    <h1>Download 폴더 관리자</h1>
+    <p class="tag">다운로드 폴더를 <b>안전하게</b> 분석·분류하고, 정리 결과를 Markdown/HTML/Excel 보고서로 만드는 Python 도구.
+       미리보기(Dry-run) 기본 · 되돌리기 · 휴지통 정리 지원.</p>
+    <div>
+      <span class="pill">Python 3.11+</span><span class="pill">Streamlit 웹 UI</span>
+      <span class="pill">CLI</span><span class="pill">영구 삭제 없음</span>
+    </div>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/gemini2k/DownloadOrganizer">GitHub 저장소</a>
+      <a class="btn ghost" href="#run">로컬 실행 방법</a>
+      <!-- Streamlit Cloud 배포 후 아래 링크의 URL을 교체하세요 -->
+      <a class="btn ghost" href="https://share.streamlit.io/">온라인 데모(배포 후 연결)</a>
+    </div>
+    <div class="note">
+      ⚠️ <b>실제 정리는 내 PC에서 실행해야 합니다.</b> 이 도구는 <b>로컬 파일</b>을 다루므로, 공개 웹(데모)에 올리면
+      방문자 PC가 아니라 <b>서버의 파일</b>을 대상으로 동작합니다. 온라인 데모는 샘플 폴더 기준의 미리보기용입니다.
+    </div>
+  </header>
+
+  <section>
+    <h2>주요 기능</h2>
+    <div class="grid">
+      <div class="card"><h3>📦 스마트 분류</h3><p>유형별(문서·이미지·동영상·오디오·압축·실행·코드·기타) 분류. 확장자별·날짜별 하위 분류 옵션.</p></div>
+      <div class="card"><h3>👀 미리보기(Dry-run)</h3><p>기본은 미리보기. 계획 확인 토큰을 입력해야만 실제 이동이 실행됩니다.</p></div>
+      <div class="card"><h3>↩️ 되돌리기</h3><p>모든 이동은 이력에 기록되어 되돌릴 수 있습니다. 사전 미리보기 지원.</p></div>
+      <div class="card"><h3>♊ 중복 탐지</h3><p>정확(전체 해시)/빠름(앞 1MB) 모드. 자동 삭제 없이 후보만 표시.</p></div>
+      <div class="card"><h3>🗑️ 휴지통 정리</h3><p>중복/오래된/선택 파일을 <b>휴지통(복구 가능)</b>으로. 영구 삭제는 하지 않습니다.</p></div>
+      <div class="card"><h3>🔖 북마크 분석</h3><p>Chrome/Edge 북마크를 도메인·카테고리로 분석. URL 쿼리 마스킹 옵션.</p></div>
+      <div class="card"><h3>📄 보고서</h3><p>Markdown·HTML·Excel 보고서를 타임스탬프로 저장(덮어쓰기 없음).</p></div>
+      <div class="card"><h3>🌗 웹 UI</h3><p>Streamlit 기반. 지표·표·차트·페이징·진행바·다크모드 대응.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>안전 원칙</h2>
+    <ul class="safe">
+      <li>✅ 기본은 미리보기(Dry-run) — 확인 전에는 어떤 파일도 이동하지 않음</li>
+      <li>✅ 영구 삭제 코드 없음 — 정리는 이동, 삭제는 휴지통(복구 가능)만</li>
+      <li>✅ 선택한 폴더 밖의 파일은 건드리지 않음(이동·삭제 직전 재검증)</li>
+      <li>✅ 시스템/개인 경로 차단(Windows·Program Files·AppData·Desktop·Documents)</li>
+      <li>✅ 중복은 그룹당 최소 1개 보존 · 되돌리기 시 덮어쓰기 금지</li>
+    </ul>
+  </section>
+
+  <section id="run">
+    <h2>로컬 실행 방법</h2>
+    <p style="color:var(--muted)">Python 3.11+ 필요. 저장소를 받은 뒤:</p>
+    <pre>git clone https://github.com/gemini2k/DownloadOrganizer.git
+cd DownloadOrganizer
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+pip install -e .
+
+# 웹 UI 실행
+streamlit run streamlit_app.py
+
+# 또는 CLI (미리보기 → 토큰 확인 후 적용)
+download-organizer analyze --scan-root "C:\Users\USER\Downloads"
+download-organizer apply   --scan-root "C:\Users\USER\Downloads" --confirm-code &lt;TOKEN&gt;</pre>
+  </section>
+
+  <footer>
+    <p>Download 폴더 관리자 · <a href="https://github.com/gemini2k/DownloadOrganizer">github.com/gemini2k/DownloadOrganizer</a></p>
+    <p>이 페이지는 프로젝트 소개용 정적 사이트입니다. 실제 도구는 위 방법으로 로컬에서 실행하세요.</p>
+  </footer>
+</div>
+</body>
+</html>
